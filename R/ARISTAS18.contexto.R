@@ -1,0 +1,45 @@
+#' Datos ARISTAS contexto edición 2018
+#'
+#' Aristas, la Evaluación Nacional de Logros Educativos, es realizada en Uruguay por el Instituto Nacional de Evaluación Educativa (INEEd).
+#' Tiene como objetivo fundamental dar cuenta de los logros del sistema educativo en tercero y sexto de primaria y en tercero de educación media a nivel nacional en múltiples dimensiones. En el año 2018 se aplicó Aristas en tercero de media.
+#' En esta base 'ARISTAS18.contexto' se incluye la información de contexto familiar y entorno.
+#'
+#'
+#' @format ## `ARISTAS18.contexto`
+#' Una base de datos con 9060 filas (estudiantes) y 384 columnas (variables)
+#' \describe{
+#'   \item{IdAlumnoDes}{Identificador del estudiante}
+#'   \item{IdCentroDes}{Identificador del centro educativo}
+#'   \item{GrupoCodigo}{Identificador del grupo}
+#'   \item{Grado}{Grado escolar (9: "Tercer año de educación media")}
+#'   \item{regiones}{Región (1: "Sur", 2: "Litoral oeste", 3: "Norte", 4: "Literal sureste", 5: "Centro",  NA: "sin dato")}
+#'   \item{categoria}{Categoría de Centro (1: "Liceos públicos", 2: "Liceos privados", 3: "Centros técnicos con cursos de ciclo básico tecnológico", 4: "Centros técnicos con formación profesional básica", 5: "Liceos gratuitos de gestión privada")}
+#'   \item{peso_CENTRO}{Ponderador del centro}
+#'   \item{peso_MGrup}{Ponderador del grupo}
+#'   \item{peso_MEst}{Ponderador del estudiante}
+#'   \item{EDAD}{Edad del estudiante}
+#'   \item{SituacionCentro}{Criterio de selección (1: "Muestra",  2: "Liceos gratuitos de gestión privada de la muestra nacional", 3: "Liceos gratuitos de gestión privada del censo")}
+#'   \item{ESCS_IMP}{Índice de estatus socioeconómico y cultural del estudiante}
+#'   \item{ESCS_Alumno_cat_IMP}{Índice de estatus socioeconómico y cultural del estudiante en 5 categorías (Q1: "Muy desfavorable", Q2: "Desfavorable", Q3: "Medio", Q4: "Favorable", Q5: "Muy favorable")}
+#'   \item{ESCS_Centro_IMP}{Contexto socioeconómico y cultural del centro}
+#'   \item{ESCS_Centro_cat}{Contexto socioeconómico y cultural centro en 5 categorías (Q1: "Muy desfavorable", Q2: "Desfavorable", Q3: "Medio", Q4: "Favorable", Q5: "Muy favorable")}
+#'   \item{ESCS_Grupo_IMP}{Contexto socioeconómico y cultural del grupo}
+#'   \item{ESCS_Grupo_cat}{Contexto socioeconómico y cultural grupo en 5 categorías (Q1: "Muy desfavorable", Q2: "Desfavorable", Q3: "Medio", Q4: "Favorable", Q5: "Muy favorable")}
+#'   \item{theta_MAT_E300}{Habilidad obtenida en la prueba de matemática, escalada con media 300 y desvío 50}
+#'   \item{theta_LEN_E300}{Habilidad obtenida en la prueba de lectura, escalada con media 300 y desvío 50}
+#'   \item{Niveles_MAT}{Nivel de desempeño en matemática (B1 "Nivel bajo 1", N1 "Nivel 1", N2 "Nivel 2", N3 "Nivel 3", N4 "Nivel 4", N5 "Nivel 5", NA "Sin dato")}
+#'   \item{Niveles_LEN}{Nivel de desempeño en lectura (B1 "Nivel bajo 1", N1 "Nivel 1", N2 "Nivel 2", N3 "Nivel 3", N4 "Nivel 4", N5 "Nivel 5", N6 "Nivel 6", NA "Sin dato")}
+#'   \item{EST_W_REP_1 : EST_W_REP_160}{Pesos repetidos mediante método BRR (Balanced Repeated Replication)}
+#'   \item{EF1}{Sexo (1: "Varón", 2: "Mujer")}
+#'   \item{EF2, ..., EF70}{Resultados a ítems de la prueba.}
+#'   \item{IND_Estudiantes_EST_9}{Completó el cuestionario de estudiantes}
+#'   \item{ACTIGUALGEN_ESC50}{Índice actitudes estudiantiles hacia la igualdad de género}
+#'   \item{ESTSENTPER_ESC50}{Índice sentido de pertenencia}
+#'   \item{EVINCESTADS_ESC50}{Índice vínculos entre estudiantes y adscriptos}
+#'   \item{PRACTCOTIDIANAS_ESC50}{Índice prácticas participativas cotidianas}
+#'   \item{VINCENTREEST_ESC50}{Índice vínculos entre estudiantes}
+#'   \item{VINESTPROF_ESC50}{Índice vínculos entre estudiantes y docentes}
+#'   \item{VOZESTUD_ESC50}{Índice voz del estudiante }
+#' }
+#' @source <https://www.ineed.edu.uy/aristas-2018-tercero-de-educacion-media/>
+"ARISTAS18.contexto"

@@ -1,0 +1,34 @@
+Package: ARISTAS
+Title: Análisis de los Resultados de los Datos ARISTAS del Instituto Nacional de Evaluación Educativa de Uruguay 
+Version: 0.0.0.9000
+Authors@R: c(
+    person("Hanwen", "Zhang", , "hanwenzhang1982@gmail.com", role = c("aut", "cre")),
+    person(given = "Instituto Nacional de Evaluación Educativa (INEEd) - Uruguay**", role = c("cph", "fnd")))
+Description: Este paquete analiza las bases de datos ARISTAS del Instituto Nacional de Evaluación Educativa de Uruguay. Para una edición específica de ARISTAS, el paquete realiza la estimación y pruebas de hipótesis de los principales indicadores educativos a nivel nacional y también según subgrupos definidos por el usuario. Para diferentes ediciones de ARISTAS, el paquete realiza comparaciones entre años. Además, el paquete ajusta modelos multinivel permitiendo tanto pesos al nivel de los estudiantes como al nivel de las escuelas. 
+Nota 1: * Este paquete fue desarrollado en el marco de una consultoría para el Instituto Nacional de Evaluación Educativa (INEEd) de Uruguay, financiada por el Fondo Sectorial de Educación (FSED) de la Agencia Nacional de Investigación e Innovación (ANII) y la Fundación Ceibal.
+Nota 2: ** Realizaron contribuciones a las especificaciones de este paquete Roberto Cáceres, Gimena Castelao, Meliza González, Inés Méndez, Leonardo Moreno, María Noé Seijas, Joana Urraburu y Jennifer Viñas Forcade.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Depends: 
+    R (>= 2.10)
+LazyData: true
+Imports: 
+    dplyr,
+    estimatr,
+    forcats,
+    ggplot2,
+    ggridges,
+    lme4,
+    magrittr,
+    openxlsx,
+    RColorBrewer,
+    stats,
+    survey,
+    tidyr,
+    WeMix,
+    MuMIn
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
