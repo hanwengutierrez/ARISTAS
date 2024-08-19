@@ -106,6 +106,7 @@
 #' datos1 <- datos1 |> dplyr::mutate(nivel_dos= Niveles_MAT == "B1" | Niveles_MAT == "N1")
 #' formula.fija.logit <- nivel_dos ~ EDAD + EF1m
 #' modelo(base = datos1, formula = formula.fija.logit, tipo = "logit", pesos = "peso_MEst", cluster_var = "CentroCodigoDes")
+#' # Para extraer el pseudo R2 puede ejecutar MuMIn::r.squaredGLMM para el modelo anterior
 #' modelo(base = datos1, formula = formula.fija.logit, tipo = "logit", pesos = "peso_MEst", cluster_var = "CentroCodigoDes", pesos.rep = paste0("EST_W_REP_", 1:160))
 
 modelo <- function(base, formula, tipo, pesos = NULL, pesos.rep = NULL, pesos.centro = NULL, cluster_var = NULL) {
@@ -158,10 +159,12 @@ modelo <- function(base, formula, tipo, pesos = NULL, pesos.rep = NULL, pesos.ce
         p <- length(theta)  # Número de parámetros
         n.rep <- length(pesos.rep)
         theta.est.result <- matrix(NA, p, n.rep)
+        R2.rep <- c()
         for(k in 1:n.rep){
           base[["pesos.lm.robust.rep"]] <-  base[[pesos.rep[k]]]
           model.k <- estimatr::lm_robust(formula, data = base, clusters = base[[cluster_var]], weights = pesos.lm.robust.rep)
           theta.est.result[,k] <- summary(model.k)$coefficients[,1]
+          R2.rep[k] <- model.k$r.squared
         }
         sd.brr <- sqrt(rowMeans((theta.est.result - kronecker(matrix(theta), matrix(1, ncol=n.rep)))^2))
         valor.t <- theta/sd.brr
@@ -169,6 +172,7 @@ modelo <- function(base, formula, tipo, pesos = NULL, pesos.rep = NULL, pesos.ce
                                    s.e. = sd.brr,
                                    valor.t = valor.t)
         print(coeficientes)
+        R2 = cat("\n","El R2 para el modelo con error clusterizado es ", mean(R2.rep), "\n\n")
         model = NULL
     }
     # model$coefficients.complete <- coef(summary(lm(formula, data = base), vcov = vcovCL(model, cluster = base[[cluster_var]])))
@@ -251,10 +255,12 @@ modelo <- function(base, formula, tipo, pesos = NULL, pesos.rep = NULL, pesos.ce
       p <- length(theta)  # Número de parámetros
       n.rep <- length(pesos.rep)
       theta.est.result <- matrix(NA, p, n.rep)
+      R2.rep <- c()
       for(k in 1:n.rep){
         base[["pesos.logit.rep"]] <-  base[[pesos.rep[k]]]
         model.k <- lme4::glmer(formula.lmer, data = base, weights = pesos.logit.rep, family = binomial)
         theta.est.result[,k] <- summary(model.k)$coefficients[,1]
+        R2.rep[k] <- MuMIn::r.squaredGLMM(model.k)[1, 2]
       }
       sd.brr <- sqrt(rowMeans((theta.est.result - kronecker(matrix(theta), matrix(1, ncol=n.rep)))^2))
       valor.t <- theta/sd.brr
@@ -262,6 +268,7 @@ modelo <- function(base, formula, tipo, pesos = NULL, pesos.rep = NULL, pesos.ce
                                  s.e. = sd.brr,
                                  valor.t = valor.t)
       print(coeficientes)
+      R2 = cat("\n", "El R2 condicional para el modelo logit es ", mean(R2.rep), "\n\n")
       model = NULL
     }
 
