@@ -132,9 +132,9 @@
 
 transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, plot = NULL, descarga = FALSE, archivo = NULL, ...){
   args <- list(...)
-
+  
   options(warn = -1) # Eliminar los warning que produce ggplot
-
+  
   #---------------------------------------------------------------------------
   # Funciones auxiliares
   #---------------------------------------------------------------------------
@@ -144,19 +144,21 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
   is_categorical <- function(variable) {
     is.factor(variable) || is.character(variable)
   }
-
+  
   #---------------------------------------------------------------------------
   # Eliminar estudiantes con NA en los pesos muestrales de los estudiantes
   #---------------------------------------------------------------------------
   datos <- data |>
     dplyr::filter(!is.na(peso_MEst))
-  datos$var.y <- datos[, which(names(datos) == y)]
-
-    if(is_categorical(datos[[y]]) == TRUE){
-    datos <- datos |>
-      dplyr::mutate(var.y = dplyr::na_if(var.y, ""))
+  datos$var.y <- datos[[which(names(datos) == y)]]
+  
+  if(is_categorical(datos[[y]]) == TRUE){
+    if(sum(datos$var.y=="") > 0){
+      datos <- datos |>
+        dplyr::mutate(var.y = dplyr::na_if(var.y, ""))
     }
-
+  }
+  
   #---------------------------------------------------------------------------
   # Si el usuario ingresa variable de corte x, crear los grupos según los valores límite
   #---------------------------------------------------------------------------
@@ -182,12 +184,12 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
           }
         }
         etiquetas <- c(etiquetas, paste("(", tail(limits, 1), ", Inf)"))
-
+        
         # Usar cut para clasificar los datos y mutate para crear una nueva columna
         datos <- datos |> dplyr::mutate(var.x1 = cut(datos[[x]],
-                                               breaks = c(-Inf, limits, Inf),
-                                               labels = etiquetas,
-                                               right = FALSE),
+                                                     breaks = c(-Inf, limits, Inf),
+                                                     labels = etiquetas,
+                                                     right = FALSE),
                                         var.x1 = factor(var.x1, levels = etiquetas, ordered = TRUE))
         ind = which(datos$var.x == "NA")
         datos$var.x1[ind] = NA
@@ -220,23 +222,23 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
       }
     }
   }
-
+  
   #---------------------------------------------------------------------------
   # Especificar el diseño muestral
   #---------------------------------------------------------------------------
   pesos <- grep("^EST_W_REP", names(datos), value = TRUE)
   dis = survey::svrepdesign(data=datos, type="Fay", weights=~peso_MEst,
-                    repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"),
-                    combined.weights=TRUE, rho = 1.5, mse = F)
+                            repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"),
+                            combined.weights=TRUE, rho = 1.5, mse = F)
   total <- survey::svymean(~var.y, dis, na.rm = T) # estimación nacional
-
+  
   #---------------------------------------------------------------------------
   # Estimación de puntaje para diferentes subgrupos definidos por x
   #---------------------------------------------------------------------------
   # Si hay variable x
   if(!is.null(x)){
     grupo <- survey::svyby(~var.y, ~var.x1, dis, svymean, na.rm = T)
-
+    
     # Si y es numérica
     if(is_numerical(datos[[y]]) == TRUE){
       grupo <- cbind(grupo, confint(grupo)) # estimación por grupo
@@ -244,12 +246,12 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
       # Calcular el número y el porcentaje de NA por grupo y a nivel nacional
       grupo <- grupo |>
         dplyr::left_join(datos |>
-                    dplyr::group_by(var.x1) |>
-                    dplyr::summarise( n = dplyr::n(),
-                                      n.NA = sum(is.na(var.y)),
-                                      `%.NA` = 100*n.NA / dplyr::n()),
-                  by = "var.x1")
-
+                           dplyr::group_by(var.x1) |>
+                           dplyr::summarise( n = dplyr::n(),
+                                             n.NA = sum(is.na(var.y)),
+                                             `%.NA` = 100*n.NA / dplyr::n()),
+                         by = "var.x1")
+      
       #---------------------------------------------------------------------------
       # Unir las estimaciones por grupos con la estimación nacional
       #---------------------------------------------------------------------------
@@ -287,56 +289,56 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
         dplyr::left_join(a, by = c("var.x1" = x, "y" = "var.y"))
       # Pegar el número de n, NA y porcentaje de NA
       resultados <- resultados |> left_join(datos |>
-                                      dplyr::group_by(var.x1) |>
-                                      dplyr::summarise( n = dplyr::n(),
-                                                        n.NA = sum(is.na(var.y)),
-                                                        `%.NA` = 100*n.NA / dplyr::n()),
-                                    by = "var.x1")
-
-
+                                              dplyr::group_by(var.x1) |>
+                                              dplyr::summarise( n = dplyr::n(),
+                                                                n.NA = sum(is.na(var.y)),
+                                                                `%.NA` = 100*n.NA / dplyr::n()),
+                                            by = "var.x1")
+      
+      
       #---------------------------------------------------------------------------
       # Unir las estimaciones por grupos con la estimación nacional
       #---------------------------------------------------------------------------
-
+      
       resultados.nacional <-  setNames(data.frame("Global", row.names(as.data.frame(total)), coef(total), survey::SE(total),
                                                   confint(total)[,1], confint(total)[,2], nrow(datos), sum(is.na(datos$var.y)), 100*sum(is.na(datos$var.y))/nrow(datos)),
                                        names(resultados))
-
+      
       rownames(resultados.nacional) <- NULL
       resultados.nacional$y <- gsub("var.y", "", resultados.nacional$y)
       estimates <- rbind(resultados, resultados.nacional)
     }
- }
-
+  }
+  
   if(is.null(x)){
     total2 <- as.data.frame(total) # estimación nacional
     total2$y <- rownames(total2)
     estimates <- cbind(data.frame("Global"), total2, confint(total))
     estimates <- estimates |>
       dplyr::mutate(y = rownames(estimates),
-             y = stringr::str_replace(y, "var.y", "")) |>
+                    y = stringr::str_replace(y, "var.y", "")) |>
       dplyr::relocate(y) |>
       dplyr::rename(var.y = mean)
-
+    
     estimates$n <- nrow(datos)
     estimates$n.NA <- sum(is.na(datos$var.y))
     estimates$`%.NA` <- 100 * estimates$n.NA[nrow(estimates)] / estimates$n[nrow(estimates)]
-
+    
   }
-
+  
   #---------------------------------------------------------------------------
   # Título y subtítulo de las gráficas (contiene la estimación global)
   #---------------------------------------------------------------------------
   titulo = paste0("Datos muestrales de ", y, if(!is.null(x)){paste0(" según ", x)} else{NULL} )
   if(is_categorical(datos[[y]]) == TRUE){
-      subtitulo = NULL
-    }
+    subtitulo = NULL
+  }
   if(is_numerical(datos[[y]]) == TRUE){
-     subtitulo = paste0("Estimación global: ", format(round(estimates$var.y[nrow(estimates)], 1), decimal.mark = ","), ", IC: (",
-                        format(round(estimates$`2.5 %`[nrow(estimates)], 1), decimal.mark = ","), ", ",
-                        format(round(estimates$`97.5 %`[nrow(estimates)], 1),decimal.mark = ","), ")")
-     }
-
+    subtitulo = paste0("Estimación global: ", format(round(estimates$var.y[nrow(estimates)], 1), decimal.mark = ","), ", IC: (",
+                       format(round(estimates$`2.5 %`[nrow(estimates)], 1), decimal.mark = ","), ", ",
+                       format(round(estimates$`97.5 %`[nrow(estimates)], 1),decimal.mark = ","), ")")
+  }
+  
   #---------------------------------------------------------------------------
   # Gráficas
   #---------------------------------------------------------------------------
@@ -352,10 +354,10 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
         # Histograma para cada valor de la variable x
         for(k in 1:length(unique(datos.sinNAx$var.x1))){
           dis1 <- survey::svrepdesign(data=datos.sinNAx |> dplyr::filter(var.x1 == unique(datos.sinNAx$var.x1)[k]),
-                              type="Fay", weights=~peso_MEst,
-                              repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"),
-                              combined.weights=TRUE, rho = 1.5, mse = F)
-
+                                      type="Fay", weights=~peso_MEst,
+                                      repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"),
+                                      combined.weights=TRUE, rho = 1.5, mse = F)
+          
           histograma <- survey::svyhist(~var.y, dis1, plot = FALSE)
           mids <- histograma$mids
           density <- histograma$density
@@ -366,7 +368,7 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
         mids <- histograma$mids
         density <- histograma$density
         df <- rbind(df, data.frame(mids, density, var.x = "global"))
-
+        
         # Paso 2: Crear el histograma con ggplot2
         p1 <- ggplot2::ggplot(df, aes(x = mids, y = density)) +
           geom_col(width = 50, fill = "#619CFF") +  # Usar un ancho de barra estimado basado en los breaks
@@ -442,21 +444,21 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
         ajuste.x <- rep(1:length(unique(estimates$y)), length(unique(estimates$var.x1)))
         estimates.bar <- estimates |>
           dplyr::mutate(mean = 100 * mean,
-                 se = 100 * se,
-                 `2.5 %` = 100 * `2.5 %`,
-                 `97.5 %` = 100 * `97.5 %`,
-                 y = forcats::fct_rev(as.factor(y)),
-                 ajuste = dplyr::case_when(
-                   mean < 3 & y == unique(y)[1] ~ -6,
-                   mean < 3 & y == unique(y)[length(unique(y))] ~ 6,
-                   TRUE ~ 0
-                 )
+                        se = 100 * se,
+                        `2.5 %` = 100 * `2.5 %`,
+                        `97.5 %` = 100 * `97.5 %`,
+                        y = forcats::fct_rev(as.factor(y)),
+                        ajuste = dplyr::case_when(
+                          mean < 3 & y == unique(y)[1] ~ -6,
+                          mean < 3 & y == unique(y)[length(unique(y))] ~ 6,
+                          TRUE ~ 0
+                        )
           )
         estimates.bar$var.x1 <- as.factor(estimates.bar$var.x1)
         # Reordenar los niveles del factor para que "Global" sea el último nivel
         estimates.bar$var.x1 <- factor(estimates.bar$var.x1, levels = c(setdiff(levels(estimates.bar$var.x1), "Global"), "Global"))
-
-
+        
+        
         p1 <- ggplot2::ggplot(estimates.bar, aes(x = var.x1, y = mean, fill = y)) +
           geom_col() +
           geom_text(aes(x = var.x1, y = mean + ajuste , label = format(round(mean, 1), decimal.mark = ",")),
@@ -505,7 +507,7 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
                           fill = as.character(var.x1.numeric)), alpha = 1/2)
         }
       }
-
+      
       colnames(estimates)[1] <- x
       colnames(estimates)[2] <- y
     }
@@ -521,13 +523,13 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
         mids <- histograma$mids
         density <- histograma$density
         df <- data.frame(mids, density)
-
+        
         p1 <- ggplot2::ggplot(df, aes(x = mids, y = density)) +
           geom_col(width = 50, fill = "#619CFF") +  # Usar un ancho de barra estimado basado en los breaks
           labs(title = paste0("Distribución de ", y, if(!is.null(x)){paste0(" según ", x)} else{""}),
                x = y, y = "Densidad") +
           theme_minimal()
-
+        
         if(IC == TRUE){
           p1 <- p1 +
             labs(subtitle = subtitulo)
@@ -605,17 +607,17 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
         estimates.bar <- estimates |>
           dplyr::rename(mean = var.y) |>
           dplyr::mutate(y = rownames(estimates),
-                 y = stringr::str_replace(y, "var.y", ""),
-                 mean = 100 * mean,
-                 SE = 100 * SE,
-                 `2.5 %` = 100 * `2.5 %`,
-                 `97.5 %` = 100 * `97.5 %`,
-                 y = forcats::fct_rev(as.factor(y)),
-                 ajuste = dplyr::case_when(
-                   mean < 3 & y == unique(y)[1] ~ -5,
-                   mean < 3 & y == unique(y)[length(unique(y))] ~ 5,
-                   TRUE ~ 0
-                 )
+                        y = stringr::str_replace(y, "var.y", ""),
+                        mean = 100 * mean,
+                        SE = 100 * SE,
+                        `2.5 %` = 100 * `2.5 %`,
+                        `97.5 %` = 100 * `97.5 %`,
+                        y = forcats::fct_rev(as.factor(y)),
+                        ajuste = dplyr::case_when(
+                          mean < 3 & y == unique(y)[1] ~ -5,
+                          mean < 3 & y == unique(y)[length(unique(y))] ~ 5,
+                          TRUE ~ 0
+                        )
           )
         colors <- RColorBrewer::brewer.pal("Spectral", n = max(RColorBrewer::brewer.pal.info["Spectral", "maxcolors"]))
         # Create a function to interpolate more colors if needed
@@ -626,7 +628,7 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
         extended_colors <- color_pal(n_categories)
         # Reverse the colors
         rev_colors <- rev(extended_colors)
-
+        
         p1 <- ggplot2::ggplot(estimates.bar, aes(x = X.Global., y = mean, fill = y)) +
           geom_col() +
           geom_text(aes(x = X.Global., y = mean + ajuste , label = format(round(mean, 1), decimal.mark = ",")),
@@ -642,21 +644,21 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
       }
     }
   }
-
+  
   #---------------------------------------------------------------------------
   # Prueba de hipótesis
   #---------------------------------------------------------------------------
   # Si hay variable x
-   if(!is.null(x)){
+  if(!is.null(x)){
     # Obtener las categorías únicas
     categorias_unicas <- unique(datos$var.x1)
     combinaciones <- combn(categorias_unicas, 2)
     # Inicializar un data.frame para almacenar los resultados
     resultados.prueba <- data.frame(Categoria1 = character(),
-                                Categoria2 = character(),
-                                Estadistica = numeric(),
-                                ValorP = numeric(),
-                                stringsAsFactors = FALSE)
+                                    Categoria2 = character(),
+                                    Estadistica = numeric(),
+                                    ValorP = numeric(),
+                                    stringsAsFactors = FALSE)
     if(is_numerical(datos[[y]]) == TRUE){
       # Iterar sobre cada combinación de categorías
       if(ncol(combinaciones)>1){
@@ -664,9 +666,9 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
           par <- combinaciones[, i]
           # Realizar la prueba t
           dis1 = survey::svrepdesign(data=datos |> dplyr::filter(var.x1 %in% combinaciones[,i]),
-                             type="Fay", weights=~peso_MEst,
-                             repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"),
-                             combined.weights=TRUE, rho = 1.5, mse = F)
+                                     type="Fay", weights=~peso_MEst,
+                                     repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"),
+                                     combined.weights=TRUE, rho = 1.5, mse = F)
           resultado_ttest <- survey::svyttest(var.y ~ as.character(var.x1), dis1)
           # Almacenar los resultados en el data.frame
           resultados.prueba <- rbind(resultados.prueba, data.frame(Categoria1 = par[1],
@@ -690,14 +692,14 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
           # Realizar la prueba chi-cuadrado
           dis1 = survey::svrepdesign(data=datos |> dplyr::filter(var.x1 %in% combinaciones[,i]) |>
                                        dplyr:: mutate(var.x2 =as.character(var.x1)), type="Fay", weights=~peso_MEst,
-                             repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"), combined.weights=TRUE, rho = 1.5, mse = F)
+                                     repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"), combined.weights=TRUE, rho = 1.5, mse = F)
           tabla = survey::svytable(~var.y+var.x2, dis1)
           resultado_chisq <- summary(tabla, statistic="Chisq")
           # Almacenar los resultados en el data.frame
           resultados.prueba <- rbind(resultados.prueba, data.frame(Categoria1 = par[1],
-                                                                  Categoria2 = par[2],
-                                                                  Estadistica = resultado_chisq$statistic$statistic,
-                                                                  ValorP = resultado_chisq$statistic$p.value))
+                                                                   Categoria2 = par[2],
+                                                                   Estadistica = resultado_chisq$statistic$statistic,
+                                                                   ValorP = resultado_chisq$statistic$p.value))
           row.names(resultados.prueba) <- NULL
         }
       }
@@ -711,31 +713,31 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
                                   model$statistic$parameter, " , ",
                                   "valor p: ",
                                   format(signif(model$statistic$p.value, digits = digit +1), decimal.mark = ",")
-                                  )
+      )
     }
   }
-
+  
   #---------------------------------------------------------------------------
   # Imprimir los resultados de prueba de hipótesis
   #---------------------------------------------------------------------------
   declaracion <- cat("Los siguientes resultados consideran todos los estudiantes para los que se cuenta con ponderador \n",
                      "los resultados de estimación y prueba de hipótesis consideran pesos réplica y pesos de estudiantes \n",
                      "los conteos de datos y de NA no son ponderados \n")
-
+  
   if(!is.null(plot)){
     print(p1)
   }
-
+  
   if(!is.null(x)){
     if(is_categorical(datos[[y]]) == TRUE){
       estimates <- estimates |>
         dplyr::rename(porcentaje = mean) |>
         dplyr::mutate(porcentaje = porcentaje * 100,
-               se = se * 100,
-               `2.5 %` = `2.5 %`*100,
-               `97.5 %` = `97.5 %`*100)
+                      se = se * 100,
+                      `2.5 %` = `2.5 %`*100,
+                      `97.5 %` = `97.5 %`*100)
     }
-
+    
     if(ncol(combinaciones) > 1){
       resultados <- list(estimaciones = estimates,
                          contraste.individual = resultados.prueba,
@@ -743,7 +745,7 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
       if(!is.null(plot)){
         resultados$p1 = p1
       }
-
+      
       declaracion
       print(list(estimaciones = format(ajustarDecimales(resultados$estimaciones, digito = digit), decimal.mark = ","),
                  contraste.individual = format(ajustarDecimales(resultados$contraste.individual, digito = digit), decimal.mark = ","),
@@ -751,7 +753,7 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
       )
       signif.code <- cat("Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘+’ 0.1 ‘ ’ 1 \n")
     }
-     if(ncol(combinaciones) == 1){
+    if(ncol(combinaciones) == 1){
       resultados <- list(estimaciones = estimates,
                          contraste.global = resultados.global)
       if(!is.null(plot)){
@@ -762,17 +764,17 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
                  contraste.global = resultados.global))
     }
   }
-
+  
   if(is.null(x)){
     if(is_categorical(datos[[y]]) == TRUE){
       estimates <- estimates |>
         dplyr::rename(porcentaje = var.y) |>
         dplyr::mutate(porcentaje = porcentaje * 100,
-               SE = SE * 100,
-               `2.5 %` = `2.5 %`*100,
-               `97.5 %` = `97.5 %`*100)
+                      SE = SE * 100,
+                      `2.5 %` = `2.5 %`*100,
+                      `97.5 %` = `97.5 %`*100)
     }
-
+    
     resultados <- list(estimaciones = estimates)
     if(!is.null(plot)){
       resultados$p1 = p1
@@ -781,41 +783,40 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
     print(list(estimaciones = format(ajustarDecimales(estimates, digito = digit), decimal.mark = ",")))
   }
   if(descarga){
-      # Guarlos resultados en Excel
-      wb <- openxlsx::createWorkbook() # Crea un nuevo libro de Excel
-      openxlsx::addWorksheet(wb, "Hoja 1") # Añade una hoja
-      if(is.null(archivo)){
-        archivo = paste0(y, ".xlsx")
-      }
-      if(!is.null(x)){
-        if(ncol(combinaciones) > 1){
-          openxlsx::writeData(wb, sheet = "Hoja 1", estimates, startRow = 1, startCol = 1)
-          openxlsx::writeData(wb, sheet = "Hoja 1", resultados.prueba, startRow = nrow(estimates) + 3, startCol = 1)
-          openxlsx::writeData(wb, "Hoja 1", resultados.global, startRow = nrow(estimates) + nrow(resultados.prueba) + 6, startCol = 1, colNames = FALSE)
-          openxlsx::saveWorkbook(wb, file = archivo, overwrite = TRUE)
-        }
-        if(ncol(combinaciones) == 1){
-          openxlsx::writeData(wb, sheet = "Hoja 1", estimates, startRow = 1, startCol = 1)
-          openxlsx::writeData(wb, "Hoja 1", resultados.global, startRow = nrow(estimates) + 3, startCol = 1, colNames = FALSE)
-          openxlsx::saveWorkbook(wb, file = archivo, overwrite = TRUE)
-        }
-      }
-
-      if(is.null(x)){
+    # Guarlos resultados en Excel
+    wb <- openxlsx::createWorkbook() # Crea un nuevo libro de Excel
+    openxlsx::addWorksheet(wb, "Hoja 1") # Añade una hoja
+    if(is.null(archivo)){
+      archivo = paste0(y, ".xlsx")
+    }
+    if(!is.null(x)){
+      if(ncol(combinaciones) > 1){
         openxlsx::writeData(wb, sheet = "Hoja 1", estimates, startRow = 1, startCol = 1)
+        openxlsx::writeData(wb, sheet = "Hoja 1", resultados.prueba, startRow = nrow(estimates) + 3, startCol = 1)
+        openxlsx::writeData(wb, "Hoja 1", resultados.global, startRow = nrow(estimates) + nrow(resultados.prueba) + 6, startCol = 1, colNames = FALSE)
         openxlsx::saveWorkbook(wb, file = archivo, overwrite = TRUE)
       }
-      if(!is.null(plot)){
-        nombre.plot <- sub("\\.xlsx$", ".pdf", archivo)
-        if (!is.null(args$ancho) && !is.null(args$alto)) {
-          ggsave(filename = nombre.plot, plot = p1, device = "pdf", width = args$ancho, height = args$alto)
-        } else {
-          ggsave(filename = nombre.plot, plot = p1, device = "pdf")
-        }
+      if(ncol(combinaciones) == 1){
+        openxlsx::writeData(wb, sheet = "Hoja 1", estimates, startRow = 1, startCol = 1)
+        openxlsx::writeData(wb, "Hoja 1", resultados.global, startRow = nrow(estimates) + 3, startCol = 1, colNames = FALSE)
+        openxlsx::saveWorkbook(wb, file = archivo, overwrite = TRUE)
       }
-      cat("Los resultados se han exportado a la ruta suministrada.")
     }
-
-    return(invisible(resultados))
+    
+    if(is.null(x)){
+      openxlsx::writeData(wb, sheet = "Hoja 1", estimates, startRow = 1, startCol = 1)
+      openxlsx::saveWorkbook(wb, file = archivo, overwrite = TRUE)
+    }
+    if(!is.null(plot)){
+      nombre.plot <- sub("\\.xlsx$", ".pdf", archivo)
+      if (!is.null(args$ancho) && !is.null(args$alto)) {
+        ggsave(filename = nombre.plot, plot = p1, device = "pdf", width = args$ancho, height = args$alto)
+      } else {
+        ggsave(filename = nombre.plot, plot = p1, device = "pdf")
+      }
+    }
+    cat("Los resultados se han exportado a la ruta suministrada.")
+  }
+  
+  return(invisible(resultados))
 }
-
