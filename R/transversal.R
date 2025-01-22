@@ -164,7 +164,7 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
   #---------------------------------------------------------------------------
   if(!is.null(x)){
     # Eliminar estudiantes con NA en la variable de corte x
-    datos$var.x <- datos[, which(names(datos) == x)]
+    datos$var.x <- datos[[which(names(datos) == x)]]
     datos <- datos |>
       dplyr::mutate(var.x = ifelse(var.x == "" | is.na(var.x), "NA", var.x))
     #---------------------------------------------------------------------------
@@ -237,7 +237,7 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
   #---------------------------------------------------------------------------
   # Si hay variable x
   if(!is.null(x)){
-    grupo <- survey::svyby(~var.y, ~var.x1, dis, svymean, na.rm = T)
+    grupo <- survey::svyby(~var.y, ~var.x1, dis, survey::svymean, na.rm = T)
     
     # Si y es numérica
     if(is_numerical(datos[[y]]) == TRUE){
