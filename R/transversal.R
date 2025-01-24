@@ -267,7 +267,7 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
     }
     # Si y es categórica
     if(is_categorical(datos[[y]]) == TRUE){
-      colnames(grupo)[2:length(unique(datos[[y]]))] <- gsub("var.y", "", colnames(grupo)[2:length(unique(datos[[y]]))])
+      colnames(grupo)[2:(length(unique(datos[[y]]))+1)] <- gsub("var.y", "", colnames(grupo)[2:(length(unique(datos[[y]]))+1)])
       estimaciones1.aux <- grupo[1:(length(unique(na.omit(datos$var.y)))+1)]
       estimaciones <- estimaciones1.aux |> tidyr::pivot_longer(!var.x1, names_to = "y", values_to = "mean")
       estimaciones2.aux <- grupo[-(2:(length(unique(na.omit(datos$var.y)))+1))]
