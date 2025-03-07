@@ -136,12 +136,12 @@
 
 longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "density", descarga = FALSE, archivo = NULL, ...){
   args <- list(...)
-  
+
   options(warn = -1) # Eliminar los warning que produce ggplot
   if(is.null(ediciones) | length(ediciones) == 1){
     stop("Debes especificar al menos 2 ediciones de ARISTAS para poder realizar la comparación.")
   }
-  
+
   #---------------------------------------------------------------------------
   # Funciones auxiliares
   #---------------------------------------------------------------------------
@@ -155,27 +155,27 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
   datos <- datos |>
     dplyr::filter(!is.na(peso_MEst))
   datos$var.y <- datos[[which(names(datos) == y)]]
-  
+
   if(!is.null(x)){
     datos$var.x <- datos[[which(names(datos) == x)]]
     datos <- datos |>
       dplyr::filter(!is.na(var.x) & var.x != "" & var.x != "NA")
   }
-  
+
   if(is_categorical(datos[[y]])){
     datos <- datos |>
       dplyr::mutate(var.y = dplyr::na_if(var.y, ""))
   }
-  
+
   datos$edicion <- as.factor(datos$edicion)
-  
+
   # Especificar el diseño muestral
   pesos <- grep("^EST_W_REP", names(datos), value = TRUE)
   datos <- datos[complete.cases(datos[, pesos]), ] # Eliminar observaciones con missing en los pesos
   dis = survey::svrepdesign(data=datos, type="Fay", weights=~peso_MEst,
-                            repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"),
-                            combined.weights=TRUE, rho = 1.5, mse = F)
-  
+                            repweights = "EST_W_REP_",
+                    combined.weights=TRUE, rho = 1.5, mse = F)
+
   #---------------------------------------------------------------------------
   # Comparación de la variable y para diferentes ediciones
   #---------------------------------------------------------------------------
@@ -185,12 +185,12 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
       estimates.nacional <- cbind(estimates.nacional, confint(estimates.nacional))
       estimates.nacional <- estimates.nacional |>
         dplyr::left_join(datos |>
-                           dplyr::group_by(edicion) |>
-                           dplyr::summarise(n = dplyr::n(),
-                                            n.NA = sum(is.na(var.y)),
-                                            `%.NA` = 100 * n.NA / dplyr::n()),
-                         by = "edicion")
-      
+                    dplyr::group_by(edicion) |>
+                      dplyr::summarise(n = dplyr::n(),
+                              n.NA = sum(is.na(var.y)),
+                              `%.NA` = 100 * n.NA / dplyr::n()),
+                  by = "edicion")
+
       prueba.f <- survey::svyglm(var.y ~ edicion, design=dis, family=gaussian())
       prueba.Wald <- survey::regTermTest(prueba.f, ~ edicion)
       resultados.global <- paste0("Estadística F para comparación de ", y, " entre las ", length(unique(datos$edicion)), " ediciones: ",
@@ -205,10 +205,10 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
         }
         if(is_categorical(x)){
           resultados.individuales <- data.frame(x = character(),
-                                                Estadistica_F = numeric(),
-                                                ValorP = numeric(),
-                                                signif = character(),
-                                                stringsAsFactors = FALSE)
+                                   Estadistica_F = numeric(),
+                                   ValorP = numeric(),
+                                   signif = character(),
+                                   stringsAsFactors = FALSE)
           categorias_x <- unique(datos$var.x)
           for (cat in categorias_x) {
             # Filtrar los datos por la categoría actual de x
@@ -220,19 +220,19 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
             pesos <- grep("^EST_W_REP", names(df_filtrado), value = TRUE)
             df_filtrado <- df_filtrado[complete.cases(df_filtrado[, pesos]), ] # Eliminar observaciones con missing en los pesos
             dis.individual = survey::svrepdesign(data=df_filtrado, type="Fay", weights=~peso_MEst,
-                                                 repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"),
-                                                 combined.weights=TRUE, rho = 1.5, mse = F)
-            
+                                                 repweights = "EST_W_REP_",
+                                      combined.weights=TRUE, rho = 1.5, mse = F)
+
             # Realizar la regresión y la prueba Wald
             prueba.f <- survey::svyglm(var.y ~ edicion, design = dis.individual, family = gaussian())
             prueba.Wald <- survey::regTermTest(prueba.f, ~ edicion)
-            
+
             # Agregar los resultados a la tabla
             resultados.individuales <- rbind(resultados.individuales,
                                              data.frame(x = cat,
-                                                        Estadistica_F =  format(round(prueba.Wald$Ftest, digit), decimal.mark = ","),
-                                                        ValorP =  format(round(prueba.Wald$p, digit), decimal.mark = ","),
-                                                        signif = significancia(prueba.Wald$p)))
+                                                       Estadistica_F =  format(round(prueba.Wald$Ftest, digit), decimal.mark = ","),
+                                                       ValorP =  format(round(prueba.Wald$p, digit), decimal.mark = ","),
+                                                       signif = significancia(prueba.Wald$p)))
           }
         }
       }
@@ -270,12 +270,12 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
       estimates.nacional <- estimates.nacional |>
         dplyr::rename (porcentaje = mean) |>
         dplyr::left_join(datos |>
-                           dplyr::group_by(edicion) |>
-                           dplyr::summarise(n = dplyr::n(),
-                                            n.NA = sum(is.na(var.y)),
-                                            `%.NA` = 100*n.NA / dplyr::n()),
-                         by = "edicion")
-      
+                    dplyr::group_by(edicion) |>
+                    dplyr::summarise(n = dplyr::n(),
+                                     n.NA = sum(is.na(var.y)),
+                                     `%.NA` = 100*n.NA / dplyr::n()),
+                  by = "edicion")
+
       # Prueba chi cuadrado
       tabla.global <- survey::svytable(as.formula(paste0("~", y, "+edicion")), dis)
       model <- summary(tabla.global, statistic="Chisq")
@@ -298,7 +298,7 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
                                                 stringsAsFactors = FALSE)
           categorias_x <- unique(datos$var.x)
           for (cat in categorias_x) {
-            
+
             # Filtrar los datos por la categoría actual de x
             df_filtrado <- datos |> dplyr::filter(var.x == cat)
             if(min(table(df_filtrado$edicion)) == 0){
@@ -308,13 +308,13 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
             pesos <- grep("^EST_W_REP", names(df_filtrado), value = TRUE)
             df_filtrado <- df_filtrado[complete.cases(df_filtrado[, pesos]), ] # Eliminar observaciones con missing en los pesos
             dis.individual = survey::svrepdesign(data=df_filtrado, type="Fay", weights=~peso_MEst,
-                                                 repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"),
+                                                 repweights = "EST_W_REP_",
                                                  combined.weights=TRUE, rho = 1.5, mse = F)
-            
+
             # Realizar la prueba Chi cuadrado
             tabla.global <- survey::svytable(as.formula(paste0("~", y, "+edicion")), dis.individual)
             model <- summary(tabla.global, statistic="Chisq")
-            
+
             # Agregar los resultados a la tabla
             resultados.individuales <- rbind(resultados.individuales,
                                              data.frame(x = cat,
@@ -327,12 +327,12 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
       }
     }
   }
-  
+
   #---------------------------------------------------------------------------
   # Título y subtítulo de las gráficas (contiene la estimación nacional)
   #---------------------------------------------------------------------------
   titulo = paste0("Datos muestrales de ", y, if(!is.null(x)){paste0(" según ", x)} else{NULL} )
-  
+
   #---------------------------------------------------------------------------
   # Si el usuario ingresa variable de corte x
   #---------------------------------------------------------------------------
@@ -347,12 +347,12 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
     # Cálculo de las estimaciones
     #---------------------------------------------------------------------------
     estimates.x <- survey::svyby(as.formula(paste("~ var.y")), as.formula(paste("~edicion+var.x")), dis, survey::svymean, na.rm = T)
-    
-    
+
+
     if(is_numerical(datos[[y]])){
-      
+
       estimates <- cbind(estimates.x, confint(estimates.x))
-      
+
       estimates <- estimates |>
         dplyr::arrange(estimates[[2]], edicion)
       n.nacionales <- datos |>
@@ -363,7 +363,7 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
                           .groups = "drop") |>
         dplyr::arrange(var.x, edicion)
       estimates <- cbind(estimates, n.nacionales[,-c(1,2)])
-    }
+      }
     if(is_categorical(datos[[y]])){
       names(estimates.x) <- gsub("var.y", "", names(estimates.x))
       p <- length(table(datos$var.y)) # cantidad de catogorias en la variable Y
@@ -384,7 +384,7 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
         )
       estimates2[[y]] <- estimates1[[y]]
       estimates <- estimates1 |> dplyr::left_join(estimates2, by = c("edicion", "var.x", y))
-      
+
       ic <- as.data.frame(confint(estimates.x))
       rownames(ic) <- gsub("var.y", "", rownames(ic))
       split_periods <- strsplit(rownames(ic), "\\.")
@@ -397,42 +397,36 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
       ic <- ic |>
         dplyr::mutate(var.y = gsub(y, "", ic$var.y))
       colnames(ic)[3] <- y
-      
+
       estimates <- estimates |>
         dplyr::left_join(ic, by = c("edicion", "var.x", y)) |>
         dplyr::left_join(datos |>
-                           dplyr::group_by(edicion, var.x) |>
-                           dplyr::summarise( n = dplyr::n(),
-                                             n.NA = sum(is.na(var.y)),
-                                             `%.NA` = 100*n.NA / dplyr::n(),
-                                             .groups = "drop"),
-        )
+                    dplyr::group_by(edicion, var.x) |>
+                    dplyr::summarise( n = dplyr::n(),
+                                      n.NA = sum(is.na(var.y)),
+                                      `%.NA` = 100*n.NA / dplyr::n(),
+                                      .groups = "drop"),
+                  )
     }
-    
+
     datos <- datos |>
       dplyr::filter(!is.na(datos[[x]]), !is.na(datos[[y]]), datos[[y]] != "")
-    
+
     if(!is.null(plot)){
       if(plot == "Lollipop" && is_numerical(datos[[y]]) == TRUE){
         estimates.nacional.Lollipop <- estimates.nacional |>
           dplyr::mutate(x = "Global")
-        
+
         k <- ncol(estimates.nacional.Lollipop)
         # Reorganizar las columnas para mover la última columna a la segunda posición
         estimates.nacional.Lollipop <- estimates.nacional.Lollipop[, c(1, k, 2:(k-1))]
         names(estimates.nacional.Lollipop) <- names(estimates)
-        
+
         estimates.Lollipop <- rbind(estimates, estimates.nacional.Lollipop)
-       
-        unique_values <- unique(estimates.Lollipop$var.x)
-        unique_values <- unique_values[unique_values != "Global"]
-        
-        estimates.Lollipop$var.x <- factor(estimates.Lollipop$var.x,
-                                              levels = c(unique_values, "Global"))
-        estimates.Lollipop <- estimates.Lollipop |>
-          dplyr::rename(!!x := var.x)
-        
-        p1 <- ggplot(estimates.Lollipop, aes(x = estimates.Lollipop[[!!x]])) +
+        estimates.Lollipop$regiones <- factor(estimates.Lollipop$var.x,
+                                              levels = c("CENTRO", "ESTE", "NORTE", "OESTE", "SUR", "Global"))
+
+        p1 <- ggplot(estimates.Lollipop, aes(x = regiones)) +
           geom_errorbar(aes(ymin = `2.5 %`, ymax = `97.5 %`, colour = edicion), width = 0.4, position = "dodge") +
           geom_errorbar(aes(ymin = estimates.Lollipop$var.y , ymax = estimates.Lollipop$var.y, colour = edicion), width = 0.4, position = "dodge") +
           labs(x = x,
@@ -451,11 +445,11 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
                caption = "En esta gráfica no se tienen en cuenta los pesos muestrales.") +
           theme_minimal() +
           theme(strip.text = element_text(face = "bold", size = 12))
-        
+
       }
       if(plot == "violin" && is_numerical(datos[[y]]) == TRUE){
-        p1 <- ggplot(datos.plot, aes(y = datos.plot[[y]], x = "",
-                                     fill = edicion),
+      p1 <- ggplot(datos.plot, aes(y = datos.plot[[y]], x = "",
+                                fill = edicion),
                      alpha = 1/2) +
           geom_violin(alpha = 1/2) +
           geom_boxplot(width = 0.9) +
@@ -472,21 +466,21 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
         estimates.bar <- estimates |>
           dplyr::select(-se, -`2.5 %`, - `97.5 %`)
         estimates.bar <- rbind(estimates.bar,
-                               estimates.nacional |>
-                                 dplyr::mutate(var.x = "Global",
-                                               porcentaje = porcentaje / 100) |>
-                                 dplyr::rename(mean = porcentaje) |>
-                                 dplyr::select(edicion, var.x, y, mean, n, n.NA, `%.NA`))
-        
+              estimates.nacional |>
+                dplyr::mutate(var.x = "Global",
+                       porcentaje = porcentaje / 100) |>
+                dplyr::rename(mean = porcentaje) |>
+                dplyr::select(edicion, var.x, y, mean, n, n.NA, `%.NA`))
+
         estimates.bar <- estimates.bar |>
           dplyr::mutate(mean = 100 * mean,
                         var.x = factor(var.x, levels = c(setdiff(unique(var.x), "Global"), "Global")),
-                        ajuste = dplyr::case_when(
-                          mean < 3 & estimates[[y]] == unique(estimates[[y]])[1] ~ 14,
-                          mean < 3 & estimates[[y]] == unique(estimates[[y]])[length(unique(estimates[[y]]))] ~ -14,
-                          TRUE ~ 0)
-          )
-        
+                 ajuste = dplyr::case_when(
+                   mean < 3 & estimates[[y]] == unique(estimates[[y]])[1] ~ 14,
+                   mean < 3 & estimates[[y]] == unique(estimates[[y]])[length(unique(estimates[[y]]))] ~ -14,
+                   TRUE ~ 0)
+                 )
+
         colors <- RColorBrewer::brewer.pal("Spectral", n = max(RColorBrewer::brewer.pal.info["Spectral", "maxcolors"]))
         # Create a function to interpolate more colors if needed
         color_pal <- grDevices::colorRampPalette(colors)
@@ -498,12 +492,12 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
         rev_colors <- rev(extended_colors)
         # Calcular el número de niveles
         num_levels <- length(unique(estimates.bar$var.x))
-        
+
         # Calcular el número de filas y columnas para hacer la gráfica más larga que ancha
         # Aquí estamos buscando una disposición de facetas que sea más alta que ancha
         num_cols <- ceiling(sqrt(num_levels))
         num_rows <- ceiling(num_levels / num_cols)
-        
+
         # Ajustar para que sea más larga que ancha
         if (num_rows < num_cols) {
           temp <- num_rows
@@ -530,7 +524,7 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
       }
     }
   }
-  
+
   #---------------------------------------------------------------------------
   # Si el usuario no ingresa variable de corte x
   #---------------------------------------------------------------------------
@@ -571,17 +565,17 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
                y = "",
                title = titulo,
                caption = "En esta gráfica no se tienen en cuenta los pesos muestrales.")
-        p1
+      p1
       }
       if(plot == "bar" && is_categorical(datos[[y]]) == TRUE){
         estimates.bar <- estimates.nacional |>
           dplyr::select(-se, -`2.5 %`, -`97.5 %`)  |>
           dplyr::mutate(mean = porcentaje,
-                        ajuste = dplyr::case_when(
-                          mean < 3 & y == unique(y)[1] ~ -5,
-                          mean < 3 & y == unique(y)[length(unique(y))] ~ 5,
-                          TRUE ~ 0
-                        )
+                 ajuste = dplyr::case_when(
+                   mean < 3 & y == unique(y)[1] ~ -5,
+                   mean < 3 & y == unique(y)[length(unique(y))] ~ 5,
+                   TRUE ~ 0
+                 )
           )
         colors <- RColorBrewer::brewer.pal("Spectral", n = max(RColorBrewer::brewer.pal.info["Spectral", "maxcolors"]))
         # Create a function to interpolate more colors if needed
@@ -592,7 +586,7 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
         extended_colors <- color_pal(n_categories)
         # Reverse the colors
         rev_colors <- rev(extended_colors)
-        
+
         p1 <- ggplot(estimates.bar, aes(x = edicion, y = mean, fill = estimates.bar[[y]])) +
           geom_col() +
           geom_text(aes(x = edicion, y = mean + ajuste , label = format(round(mean, max(1, digit - 2)), decimal.mark = ",")),
@@ -608,83 +602,83 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
       }
     }
   }
-  
+
   #---------------------------------------------------------------------------
   # Imprimir los resultados
   #---------------------------------------------------------------------------
-  
+
   declaracion <- cat("Los siguientes resultados consideran todos los estudiantes para los que se cuenta con ponderador \n",
                      "los resultados de estimación y prueba de hipótesis consideran pesos réplica y pesos de estudiantes \n",
                      "los conteos de datos y de NA no son ponderados \n")
-  
+
   if(!is.null(plot)){
     print(p1)
   }
-  
+
   if(!is.null(x)){
-    if(is_categorical(datos[[y]]) == TRUE){
-      estimates <- estimates |>
-        dplyr::rename(porcentaje = mean) |>
-        dplyr::mutate(porcentaje = porcentaje * 100,
-                      se = se * 100,
-                      `2.5 %` = `2.5 %`*100,
-                      `97.5 %` = `97.5 %`*100)
-    }
-    
-    resultados <- list(estimaciones = estimates,
-                       estimaciones.globales = estimates.nacional,
-                       contraste.global = resultados.global,
-                       contrastes.invididuales = resultados.individuales)
-    if(!is.null(plot)){
-      resultados$p1 = p1
-    }
-    declaracion
-    print(list(estimaciones = format(ajustarDecimales(resultados$estimaciones, digito = digit), decimal.mark = ","),
-               estimaciones.globales = format(ajustarDecimales(resultados$estimaciones.globales, digito = digit), decimal.mark = ","),
-               contraste.global = resultados$contraste.global,
-               contrastes.invididuales.entre.ediciones = resultados$contrastes.invididuales))
-    signif.code <- cat("Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘+’ 0.1 ‘ ’ 1 \n")
-  }
-  if(is.null(x)){
-    resultados <- list(estimaciones.globales = estimates.nacional,
-                       contraste.global = resultados.global)
-    if(!is.null(plot)){
-      resultados$p1 = p1
-    }
-    declaracion
-    print(list(estimaciones = format(ajustarDecimales(resultados$estimaciones.globales, digito = digit), decimal.mark = ","),
-               contraste.global = resultados$contraste.global))
-  }
-  
-  if(descarga){
-    if(is.null(archivo)){
-      archivo = paste0(y, ".xlsx")
-    }
-    # Guarlos resultados en Excel
-    wb <- openxlsx::createWorkbook() # Crea un nuevo libro de Excel
-    openxlsx::addWorksheet(wb, "Hoja 1") # Añade una hoja
-    if(!is.null(x)){
-      openxlsx::writeData(wb, sheet = "Hoja 1", estimates, startRow = 1, startCol = 1)
-      openxlsx::writeData(wb, sheet = "Hoja 1", estimates.nacional, startRow = nrow(estimates) + 3, startCol = 1)
-      openxlsx::writeData(wb, sheet = "Hoja 1", resultados.global, startRow = nrow(estimates) + nrow(estimates.nacional) + 6, startCol = 1, colNames = FALSE)
-      openxlsx::writeData(wb, sheet = "Hoja 1", resultados.individuales, startRow = nrow(estimates) + nrow(estimates.nacional) + 9, startCol = 1, colNames = FALSE)
-      openxlsx::saveWorkbook(wb, file = archivo, overwrite = TRUE)
-      
+      if(is_categorical(datos[[y]]) == TRUE){
+        estimates <- estimates |>
+          dplyr::rename(porcentaje = mean) |>
+          dplyr::mutate(porcentaje = porcentaje * 100,
+                 se = se * 100,
+                 `2.5 %` = `2.5 %`*100,
+                 `97.5 %` = `97.5 %`*100)
+      }
+
+      resultados <- list(estimaciones = estimates,
+                         estimaciones.globales = estimates.nacional,
+                         contraste.global = resultados.global,
+                         contrastes.invididuales = resultados.individuales)
+      if(!is.null(plot)){
+        resultados$p1 = p1
+      }
+      declaracion
+       print(list(estimaciones = format(ajustarDecimales(resultados$estimaciones, digito = digit), decimal.mark = ","),
+                 estimaciones.globales = format(ajustarDecimales(resultados$estimaciones.globales, digito = digit), decimal.mark = ","),
+                 contraste.global = resultados$contraste.global,
+                 contrastes.invididuales.entre.ediciones = resultados$contrastes.invididuales))
+       signif.code <- cat("Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘+’ 0.1 ‘ ’ 1 \n")
     }
     if(is.null(x)){
-      openxlsx::writeData(wb, sheet = "Hoja 1", estimates.nacional, startRow = 1, startCol = 1)
-      openxlsx::writeData(wb, "Hoja 1", resultados.global, startRow = nrow(estimates.nacional) + 3, startCol = 1, colNames = FALSE)
-      openxlsx::saveWorkbook(wb,  file = archivo, overwrite = TRUE)
-    }
-    if(!is.null(plot)){
-      nombre.plot <- sub("\\.xlsx$", ".pdf", archivo)
-      if (!is.null(args$ancho) && !is.null(args$alto)) {
-        ggsave(filename = nombre.plot, plot = p1, device = "pdf", width = args$ancho, height = args$alto)
-      } else {
-        ggsave(filename = nombre.plot, plot = p1, device = "pdf")
+      resultados <- list(estimaciones.globales = estimates.nacional,
+                         contraste.global = resultados.global)
+      if(!is.null(plot)){
+        resultados$p1 = p1
       }
+      declaracion
+      print(list(estimaciones = format(ajustarDecimales(resultados$estimaciones.globales, digito = digit), decimal.mark = ","),
+                 contraste.global = resultados$contraste.global))
     }
-    cat("Los resultados se han exportado a la ruta suministrada.")
-  }
-  return(invisible(resultados))
+
+    if(descarga){
+      if(is.null(archivo)){
+        archivo = paste0(y, ".xlsx")
+      }
+      # Guarlos resultados en Excel
+      wb <- openxlsx::createWorkbook() # Crea un nuevo libro de Excel
+      openxlsx::addWorksheet(wb, "Hoja 1") # Añade una hoja
+      if(!is.null(x)){
+        openxlsx::writeData(wb, sheet = "Hoja 1", estimates, startRow = 1, startCol = 1)
+        openxlsx::writeData(wb, sheet = "Hoja 1", estimates.nacional, startRow = nrow(estimates) + 3, startCol = 1)
+        openxlsx::writeData(wb, sheet = "Hoja 1", resultados.global, startRow = nrow(estimates) + nrow(estimates.nacional) + 6, startCol = 1, colNames = FALSE)
+        openxlsx::writeData(wb, sheet = "Hoja 1", resultados.individuales, startRow = nrow(estimates) + nrow(estimates.nacional) + 9, startCol = 1, colNames = FALSE)
+        openxlsx::saveWorkbook(wb, file = archivo, overwrite = TRUE)
+
+      }
+      if(is.null(x)){
+        openxlsx::writeData(wb, sheet = "Hoja 1", estimates.nacional, startRow = 1, startCol = 1)
+        openxlsx::writeData(wb, "Hoja 1", resultados.global, startRow = nrow(estimates.nacional) + 3, startCol = 1, colNames = FALSE)
+        openxlsx::saveWorkbook(wb,  file = archivo, overwrite = TRUE)
+      }
+      if(!is.null(plot)){
+        nombre.plot <- sub("\\.xlsx$", ".pdf", archivo)
+        if (!is.null(args$ancho) && !is.null(args$alto)) {
+          ggsave(filename = nombre.plot, plot = p1, device = "pdf", width = args$ancho, height = args$alto)
+        } else {
+          ggsave(filename = nombre.plot, plot = p1, device = "pdf")
+        }
+      }
+      cat("Los resultados se han exportado a la ruta suministrada.")
+    }
+ return(invisible(resultados))
 }
