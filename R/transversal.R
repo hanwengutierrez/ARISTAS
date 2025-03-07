@@ -226,9 +226,8 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
   #---------------------------------------------------------------------------
   # Especificar el diseño muestral
   #---------------------------------------------------------------------------
-  pesos <- grep("^EST_W_REP", names(datos), value = TRUE)
   dis = survey::svrepdesign(data=datos, type="Fay", weights=~peso_MEst,
-                            repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"),
+                            repweights = "EST_W_REP_",
                             combined.weights=TRUE, rho = 1.5, mse = F)
   total <- survey::svymean(~var.y, dis, na.rm = T) # estimación nacional
   
@@ -267,7 +266,7 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
     }
     # Si y es categórica
     if(is_categorical(datos[[y]]) == TRUE){
-      colnames(grupo)[2:(length(unique(datos[[y]]))+1)] <- gsub("var.y", "", colnames(grupo)[2:(length(unique(datos[[y]]))+1)])
+      colnames(grupo)[2:length(unique(datos[[y]]))] <- gsub("var.y", "", colnames(grupo)[2:length(unique(datos[[y]]))])
       estimaciones1.aux <- grupo[1:(length(unique(na.omit(datos$var.y)))+1)]
       estimaciones <- estimaciones1.aux |> tidyr::pivot_longer(!var.x1, names_to = "y", values_to = "mean")
       estimaciones2.aux <- grupo[-(2:(length(unique(na.omit(datos$var.y)))+1))]
@@ -355,7 +354,7 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
         for(k in 1:length(unique(datos.sinNAx$var.x1))){
           dis1 <- survey::svrepdesign(data=datos.sinNAx |> dplyr::filter(var.x1 == unique(datos.sinNAx$var.x1)[k]),
                                       type="Fay", weights=~peso_MEst,
-                                      repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"),
+                                      repweights = "EST_W_REP_",
                                       combined.weights=TRUE, rho = 1.5, mse = F)
           
           histograma <- survey::svyhist(~var.y, dis1, plot = FALSE)
@@ -667,7 +666,7 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
           # Realizar la prueba t
           dis1 = survey::svrepdesign(data=datos |> dplyr::filter(var.x1 %in% combinaciones[,i]),
                                      type="Fay", weights=~peso_MEst,
-                                     repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"),
+                                     repweights = "EST_W_REP_",
                                      combined.weights=TRUE, rho = 1.5, mse = F)
           resultado_ttest <- survey::svyttest(var.y ~ as.character(var.x1), dis1)
           # Almacenar los resultados en el data.frame
@@ -692,7 +691,7 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
           # Realizar la prueba chi-cuadrado
           dis1 = survey::svrepdesign(data=datos |> dplyr::filter(var.x1 %in% combinaciones[,i]) |>
                                        dplyr:: mutate(var.x2 =as.character(var.x1)), type="Fay", weights=~peso_MEst,
-                                     repweights=paste0("EST_W_REP_[", "1-", length(pesos), "]"), combined.weights=TRUE, rho = 1.5, mse = F)
+                                     repweights = "EST_W_REP_", combined.weights=TRUE, rho = 1.5, mse = F)
           tabla = survey::svytable(~var.y+var.x2, dis1)
           resultado_chisq <- summary(tabla, statistic="Chisq")
           # Almacenar los resultados en el data.frame
