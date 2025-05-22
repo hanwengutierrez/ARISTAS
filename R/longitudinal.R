@@ -680,5 +680,8 @@ longitudinal <- function(datos, ediciones, y, x = NULL, digit = 3, plot = "densi
       }
       cat("Los resultados se han exportado a la ruta suministrada.")
     }
+
+   if(!is.null(plot)){  
+    list(grafica = p1)}                     
  return(invisible(resultados))
 }
