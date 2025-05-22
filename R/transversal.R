@@ -816,6 +816,9 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
     }
     cat("Los resultados se han exportado a la ruta suministrada.")
   }
+
+    if(!is.null(plot)){  
+    list(grafica = p1)}
   
   return(invisible(resultados))
 }
