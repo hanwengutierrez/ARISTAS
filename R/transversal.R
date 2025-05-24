@@ -494,7 +494,8 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
                 legend.position = "none",
                 axis.text.x = element_blank()) +
           ylim(min(estimates$`2.5 %`)-2, max(estimates$`97.5 %`)) +
-          geom_text(aes(x = var.x1.numeric, y = min(estimates$`2.5 %`)-2, label = var.x1))
+          geom_text(aes(x = var.x1.numeric, y = min(estimates$`2.5 %`)-2, label = c(levels(datos[[x]]), "Global")))
+          # geom_text(aes(x = var.x1.numeric, y = min(estimates$`2.5 %`)-2, label = var.x1))
         if(IC == TRUE){
           p1 <- p1  +
             geom_segment(aes(x = var.x1.numeric - margen,
@@ -816,8 +817,8 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
     }
     cat("Los resultados se han exportado a la ruta suministrada.")
   }
-
-    if(!is.null(plot)){  
+  
+  if(!is.null(plot)){  
     list(grafica = p1)}
   
   return(invisible(resultados))
