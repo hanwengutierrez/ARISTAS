@@ -478,7 +478,13 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
         estimates.Lolli <- estimates |>
           dplyr::mutate(var.x1.numeric = c(1:nrow(estimates)))
         margen <- 0.5
-        p1 <- ggplot2::ggplot(estimates.Lolli) +
+        if(is.character(datos[[x]])){
+          etiqueta <- estimates.Lolli$var.x1
+        }
+        if(is.factor(datos[[x]])){
+          etiqueta <- c(levels(datos[[x]]), "Global")
+        }
+       p1 <- ggplot2::ggplot(estimates.Lolli) +
           geom_segment(aes(x = var.x1.numeric - margen,
                            xend = var.x1.numeric + margen,
                            y = var.y, yend = var.y, col = var.x1)) +
@@ -494,8 +500,8 @@ transversal <- function(data, y, x = NULL, limits = NULL, digit = 3, IC = TRUE, 
                 legend.position = "none",
                 axis.text.x = element_blank()) +
           ylim(min(estimates$`2.5 %`)-2, max(estimates$`97.5 %`)) +
-          geom_text(aes(x = var.x1.numeric, y = min(estimates$`2.5 %`)-2, label = c(levels(datos[[x]]), "Global")))
-          # geom_text(aes(x = var.x1.numeric, y = min(estimates$`2.5 %`)-2, label = var.x1))
+          geom_text(aes(x = var.x1.numeric, y = min(estimates$`2.5 %`)-2, label = etiqueta))
+        # geom_text(aes(x = var.x1.numeric, y = min(estimates$`2.5 %`)-2, label = var.x1))
         if(IC == TRUE){
           p1 <- p1  +
             geom_segment(aes(x = var.x1.numeric - margen,
